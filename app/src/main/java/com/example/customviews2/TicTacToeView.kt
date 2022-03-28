@@ -7,10 +7,13 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.util.TypedValue
+import android.view.MotionEvent
 import android.view.View
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.properties.Delegates
+
+typealias OnCellActionListener = (row: Int,column: Int, field: TicTacToeField) -> Unit
 
 class TicTacToeView(
     context: Context,
@@ -18,6 +21,7 @@ class TicTacToeView(
     defStyleAttr: Int,
     defStyleRes: Int
     ): View(context, attrs, defStyleAttr, defStyleRes) {
+
 
     var ticTacToeField: TicTacToeField? = null
         set(value){
@@ -29,8 +33,10 @@ class TicTacToeView(
             invalidate() // вызывается для перерисовки
         }
 
-    private val listener: OnFieldChangedListener ={
+    var actionListener: OnCellActionListener? = null
 
+    private val listener: OnFieldChangedListener ={
+        invalidate()
     }
 
     private var player1Color by Delegates.notNull<Int>()
@@ -142,6 +148,33 @@ class TicTacToeView(
 
         drawGrid(canvas)
         drawCells(canvas)
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val field = this.ticTacToeField ?: return false
+        when(event.action){
+            MotionEvent.ACTION_DOWN ->{
+                return true
+            }
+            MotionEvent.ACTION_UP ->{
+                val row = getRow(event)
+                val column = getColumn(event)
+                if (row >= 0 && column >= 0 && row < field.rows && column < field.columns){
+                    actionListener?.invoke(row, column, field)
+                    return true
+                }
+                return false
+            }
+        }
+        return false
+    }
+
+    private fun getRow(event: MotionEvent): Int{
+        return ((event.y - fieldRect.top) / cellSize).toInt()
+    }
+
+    private fun getColumn(event: MotionEvent): Int{
+        return ((event.x - fieldRect.left) / cellSize).toInt()
     }
 
     private fun drawGrid(canvas: Canvas){
