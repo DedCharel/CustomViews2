@@ -1,7 +1,9 @@
 package com.example.customviews2
 
 import android.content.Context
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.util.TypedValue
@@ -35,9 +37,14 @@ class TicTacToeView(
     private var player2Color by Delegates.notNull<Int>()
     private var gridColor by Delegates.notNull<Int>()
 
-    private val fieldRect = RectF(0f, 0f, 0f, 0f)
+    private val fieldRect = RectF()
     private var cellSize: Float = 0f
     private var cellPadding: Float = 0f
+    private var cellRect = RectF()
+
+    private lateinit var player1Paint: Paint
+    private lateinit var player2Paint: Paint
+    private lateinit var gridPaint: Paint
 
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int): this(context, attrs, defStyleAttr, R.style.DefaultTicTacToeFieldStyle)
     constructor(context: Context, attrs: AttributeSet?): this(context, attrs, R.attr.ticTacToeFieldStyle)
@@ -49,6 +56,32 @@ class TicTacToeView(
         } else{
             initDefaultColors()
         }
+        initPaints()
+        if (isInEditMode) {
+            //для тестирования отрисовки создадим касс TicTacToeField (будет создаваться только в режиме отладки)
+            ticTacToeField = TicTacToeField(8, 6)
+            ticTacToeField?.setCell(1, 1, Cell.PLAYER_1)
+            ticTacToeField?.setCell(3, 1, Cell.PLAYER_1)
+            ticTacToeField?.setCell(3, 3, Cell.PLAYER_2)
+
+        }
+    }
+
+    private fun initPaints() {
+        player1Paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        player1Paint.color =player1Color
+        player1Paint.style = Paint.Style.STROKE
+        player1Paint.strokeWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 3f, resources.displayMetrics)
+
+        player2Paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        player2Paint.color =player2Color
+        player2Paint.style = Paint.Style.STROKE
+        player2Paint.strokeWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 3f, resources.displayMetrics)
+
+        gridPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        gridPaint.color =gridColor
+        gridPaint.style = Paint.Style.STROKE
+        gridPaint.strokeWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1f, resources.displayMetrics)
     }
 
     private fun initDefaultColors() {
@@ -98,6 +131,68 @@ class TicTacToeView(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         updateViewSize()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        if (ticTacToeField == null) return
+        if (cellSize == 0f) return
+        if (fieldRect.width() <= 0 ) return
+        if (fieldRect.height() <= 0) return
+
+        drawGrid(canvas)
+        drawCells(canvas)
+    }
+
+    private fun drawGrid(canvas: Canvas){
+        val field =this.ticTacToeField ?: return
+
+        val xStart = fieldRect.left
+        val xEnd = fieldRect.right
+        for(i in 0..field.rows){
+            val y = fieldRect.top + cellSize * i
+            canvas.drawLine(xStart, y, xEnd, y, gridPaint)
+        }
+
+        val yStart = fieldRect.top
+        val yEnd = fieldRect.bottom
+        for(i in 0..field.columns){
+            val x = fieldRect.left + cellSize * i
+            canvas.drawLine(x, yStart, x, yEnd, gridPaint)
+        }
+    }
+    private fun drawCells(canvas: Canvas){
+        val field = this.ticTacToeField ?: return
+        for (row in 0 until field.rows){
+            for (column in 0 until field.columns){
+                val cell = field.getCell(row, column)
+                if (cell == Cell.PLAYER_1){
+                    drawPlayer1(canvas, row, column)
+                } else if (cell == Cell.PLAYER_2){
+                    drawPlayer2(canvas, row, column)
+                }
+            }
+        }
+
+    }
+
+    private fun drawPlayer2(canvas: Canvas, row: Int, column: Int) {
+        val cellRect = getCellRect(row, column)
+        canvas.drawCircle(cellRect.centerX() ,cellRect.centerY(), cellRect.width()/2, player2Paint)
+    }
+
+    private fun drawPlayer1(canvas: Canvas, row: Int, column: Int) {
+        val cellRect = getCellRect(row, column)
+        canvas.drawLine(cellRect.left, cellRect.top, cellRect.right, cellRect.bottom, player1Paint)
+        canvas.drawLine(cellRect.right, cellRect.top, cellRect.left, cellRect.bottom, player1Paint)
+    }
+
+    private fun getCellRect(row: Int, column: Int) : RectF{
+        cellRect.left = fieldRect.left + column * cellSize + cellPadding
+        cellRect.top = fieldRect.top + row * cellSize + cellPadding
+        cellRect.right = cellRect.left + cellSize - cellPadding * 2
+        cellRect.bottom = cellRect.top + cellSize - cellPadding * 2
+        return  cellRect
     }
 
     private fun updateViewSize() {
